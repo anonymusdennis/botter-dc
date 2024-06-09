@@ -54,15 +54,15 @@ client.on('messageCreate', async message => {
 
 const commandlist = [
     'say §4[!!!WICHTIG!!!]',
-    'say Nach langen überlegen, und Vielen verlorenen Spielern haben wir(das Serverteam) uns nun entschieden:',
-    'say Um auf moddedmc.de / mmc.rip zu spielen, Müssen sich bald alle Spieler auf den gleichen DC server um sich zu registrieren',
-    'say Dies soll bewirken, dass Endlich unsere Community wieder Zusammenkommt.',
-    'say das ganze wird auf whitelist basis ablaufen, und Nach registrierung sind die Spieler global au allen gehosteten Servern AUTOMATISCH gewhitelistet.',
-    'say Die Server werden weiterhin bis in alle ewigkeit kostenlos bleiben, Dies ist nur eine Aktion zum Revitalisiern aller Modpack/events.',
-    'say Um später dann dich in der whitelist zu adden, einfach in den Untigen DC server joinen',
+    'say Nach längerem Überlegen, und vielen verlorenen Spielern haben wir(das Serverteam) uns nun entschieden:',
+    'say Um auf moddedmc.de / mmc.rip zu spielen, müssen sich bald alle Spieler auf dem gleichen DC Server registrieren',
+    'say Dies soll bewirken, dass endlich unsere Community wieder zusammenkommt.',
+    'say das Ganze wird auf whitelist basis ablaufen und nach Registrierung, werden alle Spieler global auf den gehosteten Servern AUTOMATISCH der whitelistet hinzugefügt.',
+    'say Die Server werden weiterhin bis in alle Ewigkeit kostenlos bleiben, dies ist nur eine Maßnahme zum Wiederbeleben aller Modpack/events.',
+    'say Um dich später der whitelist hinzuzufügen, einfach dem Server über den untenstehenden Link beitreten',
     'tellraw @a {"text":"DC Server","clickEvent":{"action":"open_url","value":"https://discord.gg/mjA8PfAhea"},"hoverEvent":{"action":"show_text","value":[{"text":"Dem DC server beitreten","bold":true,"color":"dark_blue"}]}}',
-    'say und wo der link oben nicht gezeigt wird, hier nochmal: https://discord.gg/mjA8PfAhea',
-    'say Danke für euer Verständnis, diese Änderungen werden erst nach einem Monat aktiviert, sodass jeder Zeit bleibt sich zu registrieren.',
+    'say und sollte der link oben nicht angezeigt werden, hier nochmal: https://discord.gg/mjA8PfAhea',
+    'say Danke für euer Verständnis, diese Änderungen werden erst nach einem Monat Inkrafttreten.',
 ]
 function spammessage_forall() {
     application.getAllServers().then(async servers => {
