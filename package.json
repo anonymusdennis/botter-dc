@@ -1,0 +1,17 @@
+{
+  "name": "botter",
+  "version": "1.0.0",
+  "description": "a dc bot sthat whitelists",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "discord.js": "^14.15.2",
+    "dotenv": "^16.4.5",
+    "minecraft-player": "^1.0.1",
+    "nodeactyl": "^3.3.0"
+  }
+}

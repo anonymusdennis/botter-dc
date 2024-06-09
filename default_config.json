@@ -1,0 +1,16 @@
+{
+    "create_channel": false,
+    "channel_name": "", 
+    "channel_title": "Add Title here", 
+    "channel_description": "Add Description here", 
+    "modpack_type": "curseforge", 
+    "modpack_name": "modpack_name_here",
+    "modpack_url": "https://curseforge.com/minecraft/modpacks/modpack_name_here",
+    "additional_info": "info about first download page",
+    "download_url": "https://curseforge.com/minecraft/modpacks/modpack_name_here/files/1234567",
+    "download_title": "Download Title here",
+    "additional_info2": "info about second download page",
+    "download_url2": "https://curseforge.com/minecraft/modpacks/modpack_name_here/files/1234567",
+    "download_title2": "Download Title here",
+    "footer": "footer text here"
+}
