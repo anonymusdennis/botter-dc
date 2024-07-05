@@ -1,47 +1,47 @@
 {
-    "object": "server",
-    "attributes": {
-        "id": 105,
-        "external_id": null,
-        "uuid": "4e506c3e-5422-4e66-91d0-3d8a14832aff",
-        "identifier": "4e506c3e",
-        "name": "Vanilla",
-        "description": "",
-        "status": null,
-        "suspended": false,
-        "limits": {
-            "memory": 5000,
-            "swap": 0,
-            "disk": 6000,
-            "io": 500,
-            "cpu": 0,
-            "threads": null,
-            "oom_disabled": true
-        },
-        "feature_limits": {
-            "databases": 0,
-            "allocations": 0,
-            "backups": 0
-        },
-        "user": 2,
-        "node": 4,
-        "allocation": 260,
-        "nest": 1,
-        "egg": 4,
-        "container": {
-            "startup_command": "java -Xms128M -XX:MaxRAMPercentage=95.0 -jar {{SERVER_JARFILE}}",
-            "image": "ghcr.io/pterodactyl/yolks:java_17",
-            "installed": 1,
-            "environment": {
-                "SERVER_JARFILE": "server.jar",
-                "VANILLA_VERSION": "1.20.1",
-                "STARTUP": "java -Xms128M -XX:MaxRAMPercentage=95.0 -jar {{SERVER_JARFILE}}",
-                "P_SERVER_LOCATION": "MAIN",
-                "P_SERVER_UUID": "4e506c3e-5422-4e66-91d0-3d8a14832aff",
-                "P_SERVER_ALLOCATION_LIMIT": 0
-            }
-        },
-        "updated_at": "2024-05-13T13:09:36+00:00",
-        "created_at": "2024-05-13T13:09:28+00:00"
-    }
+  "object": "server",
+  "attributes": {
+    "id": 105,
+    "external_id": null,
+    "uuid": "4e506c3e-5422-4e66-91d0-3d8a14832aff",
+    "identifier": "4e506c3e",
+    "name": "Vanilla",
+    "description": "",
+    "status": null,
+    "suspended": false,
+    "limits": {
+      "memory": 5000,
+      "swap": 0,
+      "disk": 6000,
+      "io": 500,
+      "cpu": 0,
+      "threads": null,
+      "oom_disabled": true
+    },
+    "feature_limits": {
+      "databases": 0,
+      "allocations": 0,
+      "backups": 0
+    },
+    "user": 2,
+    "node": 4,
+    "allocation": 260,
+    "nest": 1,
+    "egg": 4,
+    "container": {
+      "startup_command": "java -Xms128M -XX:MaxRAMPercentage=95.0 -jar {{SERVER_JARFILE}}",
+      "image": "ghcr.io/pterodactyl/yolks:java_17",
+      "installed": 1,
+      "environment": {
+        "SERVER_JARFILE": "server.jar",
+        "VANILLA_VERSION": "1.20.1",
+        "STARTUP": "java -Xms128M -XX:MaxRAMPercentage=95.0 -jar {{SERVER_JARFILE}}",
+        "P_SERVER_LOCATION": "MAIN",
+        "P_SERVER_UUID": "4e506c3e-5422-4e66-91d0-3d8a14832aff",
+        "P_SERVER_ALLOCATION_LIMIT": 0
+      }
+    },
+    "updated_at": "2024-05-13T13:09:36+00:00",
+    "created_at": "2024-05-13T13:09:28+00:00"
+  }
 }
