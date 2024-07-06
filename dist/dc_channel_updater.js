@@ -13,55 +13,54 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 //this class will handle all the updates for each server.
 import dotenv from 'dotenv';
 if (globalThis.config == undefined || globalThis.config.parsed == undefined) {
-    console.log("reading config again");
+    ////console.log("reading config again")
     globalThis.config = dotenv.config();
     if (globalThis.config == undefined || globalThis.config.parsed == undefined) {
-        console.log("Malformed .env File, please fix");
+        ////console.log("Malformed .env File, please fix")
         process.exit();
     }
 }
 const serverpath = globalThis.config.parsed.SERVER_FILES_DIR;
 import fs from 'fs';
 import { ChannelType, PermissionFlagsBits } from 'discord.js';
-import default_file from './default_config.json';
+const DEFAULT_CONFIG = './default_config.json';
+const DEFAULT_CONFIG_FILE = fs.readFileSync(DEFAULT_CONFIG);
 let client;
 let application;
 let pteroclient;
 let instances = [];
 const dc_bot = {
     minutely_update: function (servers) {
-        //get all servers TODO
-        //get all configs TODO
-        //get all channels TODO
-        //update all channels TODO
         servers.data.forEach((server) => __awaiter(this, void 0, void 0, function* () {
-            //console.log(JSON.stringify(server));
-            if (server.attributes.uuid == 'acb86bdf-b6e3-45f2-ac5a-993aff704ab7') {
-                //check if already exists
-                let found = false;
-                instances.forEach((instance) => {
-                    if (instance.uuid == server.attributes.uuid) {
-                        found = true;
-                    }
-                });
-                if (!found) {
-                    instances.push(new serverinstance(client, application, pteroclient, server.attributes.uuid));
+            //////console.log(JSON.stringify(server));
+            //check if already exists
+            let found = false;
+            instances.forEach((instance) => {
+                if (instance.uuid == server.attributes.uuid) {
+                    found = true;
+                    instance.update_channel();
                 }
+            });
+            if (!found) {
+                instances.push(new serverinstance(client, application, pteroclient, server.attributes.uuid));
             }
         }));
     },
     init: function (client, application, pteroclient) {
         return __awaiter(this, void 0, void 0, function* () {
             //loop over all servers
+            //console.log("init")
             application.getAllServers().then((servers) => __awaiter(this, void 0, void 0, function* () {
+                //console.log("servers")
                 //for each server create a new instance
-                servers.data.forEach((server) => __awaiter(this, void 0, void 0, function* () {
-                    //console.log(JSON.stringify(server));
-                    if (server.attributes.uuid == 'acb86bdf-b6e3-45f2-ac5a-993aff704ab7') {
-                        instances.push(new serverinstance(client, application, pteroclient, server.attributes.uuid));
-                    }
+                servers.data.forEach((server, index) => __awaiter(this, void 0, void 0, function* () {
+                    //////console.log(JSON.stringify(server));
+                    //console.log(index)
+                    instances.push(new serverinstance(client, application, pteroclient, server.attributes.uuid));
+                    //console.log(index)
                 }));
             }));
+            //console.log("init done");
         });
     }
 };
@@ -79,12 +78,15 @@ class serverinstance {
         this.channel = null;
         this.channel_created = false;
         this.uuid = uuid;
-        this.check_create_channel();
+        this.update_channel();
         this.json_config = get_config_of_server(uuid);
         return this;
     }
     update_channel() {
         return __awaiter(this, void 0, void 0, function* () {
+            yield this.check_create_channel();
+            if (this.channel != undefined)
+                yield this.create_text();
             //get the server
             //get the channel
             //update the channel
@@ -109,91 +111,57 @@ class serverinstance {
             //this.check_if_we_exist();
             //check if our channel exists by using the server uuid
             //if not create it
-            //check if first messageof each channel contains uuid
+            //check if first message of each channel contains uuid
             //also check wether written by bot.
             this.channel_created = true;
-            let iszero = true;
             yield this.client.guilds.fetch();
-            yield this.client.guilds.cache.each((guild) => __awaiter(this, void 0, void 0, function* () {
-                if (guild == globalThis.config.parsed.GUILD_ID) {
-                    yield guild.channels.cache.each((channel) => __awaiter(this, void 0, void 0, function* () {
-                        // only type 0
-                        if (channel.type === 0) {
-                            yield channel.messages.fetch({ limit: 20 }).then((messages) => __awaiter(this, void 0, void 0, function* () {
-                                //fetch the last 20 messages
-                                //if contains uuid inside string
-                                //filter to
-                                iszero = false;
-                                let success = false;
-                                messages.forEach((message) => {
-                                    if (message.content.indexOf(this.uuid) !== -1) {
-                                        console.log('found channel for ' + this.uuid);
-                                        this.channel = channel;
-                                        this.channel_created = true;
-                                        success = true;
-                                        return;
-                                    }
-                                });
-                                if (success == false)
-                                    this.channel_created = false;
-                            }));
-                        }
-                    }));
+            ////console.log("starting fetch")
+            yield findChannel(this.client, this.uuid).then((channel) => __awaiter(this, void 0, void 0, function* () {
+                this.channel = channel;
+                const config = get_config_of_server(this.uuid);
+                if (config == undefined || config.create_channel == undefined || config.create_channel == false) {
+                    if (this.channel != undefined)
+                        this.channel.delete();
+                    this.channel = undefined;
+                    return;
+                }
+                if (this.channel == undefined) {
+                    //create channel
+                    const server = yield getServer(this.uuid, this.application);
+                    let channel_name = 'deleteme';
+                    if (server != null) {
+                        channel_name = server.attributes.name;
+                    }
+                    ////console.log('creating channel for ' + this.uuid);
+                    this.channel = yield create_channel(channel_name, this.client, this.uuid);
                 }
             }));
-            if (this.channel_created == false || iszero) {
-                //create channel
-                const server = yield getServer(this.uuid, this.application);
-                let channelname = 'deleteme';
-                if (server != null) {
-                    channelname = server.attributes.name;
-                }
-                console.log('creating channel for ' + this.uuid);
-                const guild = this.client.guilds.cache.get(globalThis.config.parsed.GUILD_ID);
-                yield guild.channels
-                    .create({
-                    name: channelname,
-                    type: ChannelType.GuildText,
-                    permissionOverwrites: [
-                        {
-                            id: guild.roles.everyone,
-                            allow: [
-                                PermissionFlagsBits.AddReactions,
-                                PermissionFlagsBits.ViewChannel,
-                                PermissionFlagsBits.ReadMessageHistory,
-                            ],
-                            deny: [
-                                PermissionFlagsBits.SendMessages,
-                                PermissionFlagsBits.EmbedLinks,
-                                PermissionFlagsBits.AttachFiles,
-                                PermissionFlagsBits.UseExternalEmojis,
-                            ],
-                        },
-                    ],
-                })
-                    .then((channel) => __awaiter(this, void 0, void 0, function* () {
-                    this.channel = channel;
-                    //set category
-                    yield this.channel.setParent(globalThis.config.parsed.PARENT_CHANNEL);
-                    yield channel.send('||' + this.uuid + '||');
-                    this.channel_created = true;
-                    console.log('channel created');
-                }))
-                    .catch(console.error);
-            }
         });
     }
     create_text() {
         return __awaiter(this, void 0, void 0, function* () {
-            const cfg = get_config_of_server(this.uuid);
-            this.client.guilds.cache.get(globalThis.config.parsed.GUILD_ID).channels.cache.forEach((channel) => {
-                // only type 0
-                if (channel.type === 0) {
-                    channel.messages.fetch({ limit: 20 }).then((messages) => {
-                        //fetch the last 20 messages
-                    });
-                }
-            });
+            yield findChannel(this.client, this.uuid).then((channel) => __awaiter(this, void 0, void 0, function* () {
+                if (channel == undefined)
+                    return;
+                const cfg = get_config_of_server(this.uuid);
+                if (cfg == undefined)
+                    return;
+                const messages = yield channel.messages.fetch();
+                //console.log("fixing channel")
+                if (cfg.channel_name != undefined && cfg.channel_name != "" && channel.name != cfg.channel_name)
+                    channel.setName(cfg.channel_name, "Config change");
+                messages.forEach((message) => {
+                    //const count : number = messages.size;
+                    if (message.author.id == globalThis.client.user.id) {
+                        if (message.content.indexOf(this.uuid) != -1) {
+                            //this is the channelmessage yayy
+                            const new_content = Create_Modpack_description(this.uuid, cfg);
+                            message.edit(new_content);
+                        }
+                    }
+                });
+                ////console.log(cfg);
+            }));
         });
     }
 }
@@ -204,9 +172,8 @@ function getServer(uuid, application) {
             if (!servers || !servers.data) {
                 throw new Error('Invalid response structure');
             }
-            console.log('got servers');
+            ////console.log('got servers');
             const my_server = servers.data.find((server) => server.attributes.uuid === uuid);
-            console.log(JSON.stringify(my_server));
             return my_server;
         }
         catch (error) {
@@ -221,20 +188,124 @@ function get_config_of_server(uuid) {
     //if not create one
     const path = serverpath + uuid + '\\';
     const file_path = path + 'discord_bot.json';
-    let local_cfg = {};
+    let local_cfg;
     if (fs.existsSync(path)) {
-        if (!fs.existsSync(path)) {
-            fs.writeFileSync(file_path, JSON.stringify(default_file));
+        if (!fs.existsSync(file_path)) {
+            //console.log("creating empty config")
+            fs.writeFileSync(file_path, DEFAULT_CONFIG_FILE);
         }
         //check if config is valid
         try {
             local_cfg = JSON.parse(fs.readFileSync(file_path).toString());
         }
         catch (e) {
-            console.log('error creating config for ' + uuid);
-            local_cfg = {};
+            //console.log('error creating config for ' + uuid);
+            local_cfg = undefined;
         }
     }
     return local_cfg;
+}
+const findChannel = (client, uuid) => __awaiter(void 0, void 0, void 0, function* () {
+    let return_this_channel;
+    yield new Promise((resolve) => {
+        client.guilds.cache.each((guild) => __awaiter(void 0, void 0, void 0, function* () {
+            if (guild.id == globalThis.config.parsed.GUILD_ID) {
+                yield guild.channels.cache.each((channel) => __awaiter(void 0, void 0, void 0, function* () {
+                    // only type 0 (text based)
+                    if (channel.type === 0 && channel.parent != undefined &&
+                        channel.parent != null && channel.parent.id == config.parsed.PARENT_CHANNEL) {
+                        yield channel.messages.fetch({ limit: 20 }).then((messages) => __awaiter(void 0, void 0, void 0, function* () {
+                            //* Last 20 msgs
+                            let is_this_the_one = false;
+                            yield messages.every((message) => __awaiter(void 0, void 0, void 0, function* () {
+                                ////console.log(message.content.indexOf(uuid) != -1);
+                                if (message.content.indexOf(uuid) != -1) {
+                                    is_this_the_one = true;
+                                    return false; //stop looping
+                                }
+                                return true; //continue looping
+                            }));
+                            if (is_this_the_one) {
+                                return_this_channel = channel;
+                                resolve(return_this_channel);
+                            }
+                        }));
+                    }
+                }));
+            }
+        }));
+        setTimeout(() => {
+            resolve(return_this_channel);
+        }, 1000);
+    });
+    return return_this_channel;
+});
+const create_channel = (channel_name, client, uuid) => __awaiter(void 0, void 0, void 0, function* () {
+    let returner;
+    const config = get_config_of_server(uuid);
+    if (config != undefined && config.channel_name != undefined && config.channel_name != "")
+        channel_name = config.channel_name;
+    const guild = client.guilds.cache.get(globalThis.config.parsed.GUILD_ID);
+    yield guild.channels
+        .create({
+        name: channel_name,
+        type: ChannelType.GuildText,
+        permissionOverwrites: [
+            {
+                id: guild.roles.everyone,
+                allow: [
+                    PermissionFlagsBits.AddReactions,
+                    PermissionFlagsBits.ViewChannel,
+                    PermissionFlagsBits.ReadMessageHistory,
+                ],
+                deny: [
+                    PermissionFlagsBits.SendMessages,
+                    PermissionFlagsBits.EmbedLinks,
+                    PermissionFlagsBits.AttachFiles,
+                    PermissionFlagsBits.UseExternalEmojis,
+                ],
+            },
+        ],
+    })
+        .then((channel) => __awaiter(void 0, void 0, void 0, function* () {
+        returner = channel;
+        //set category
+        yield returner.setParent(globalThis.config.parsed.PARENT_CHANNEL);
+        yield channel.send('||' + uuid + '||');
+    }))
+        .catch(console.error);
+    return returner;
+});
+function Create_Modpack_description(uuid, config) {
+    let content = `||${uuid}||\n`;
+    if (config.modpack_name != undefined && config.modpack_name != "")
+        content += `# ${config.modpack_name}:\n`;
+    if (config.channel_title != undefined && config.channel_title != "")
+        content += `## ${config.channel_title}\n`;
+    if (config.channel_description != undefined && config.channel_description != "")
+        content += `#### ${config.channel_description}\n`;
+    if (config.modpack_type != undefined && config.modpack_type != "") {
+        content += `### Modpack Ist Installierbar auf:\n`;
+        content += `> ${config.modpack_type}\n`;
+    }
+    if (config.modpack_url != undefined && config.modpack_url != "")
+        content += `### [Link zum modpack](${config.modpack_url})\n`;
+    if (config.additional_info != undefined && config.additional_info != "")
+        content += `> #### ${config.additional_info}\n`;
+    if (config.link_1 != undefined && config.link_1 != "")
+        if (config.link_1_text != undefined && config.link_1_text != "")
+            content += `### [${config.link_1_text}](${config.link_1})\n`;
+        else
+            content += `### [Download link](${config.link_1})\n`;
+    if (config.link_2 != undefined && config.link_2 != "")
+        if (config.link_2_text != undefined && config.link_2_text != "")
+            content += `### [${config.link_2_text}](${config.link_2})\n`;
+        else
+            content += `### [Download link](${config.link_2})\n`;
+    content += `‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗‗\n`;
+    content += `Server Adresse:\n\`\`\`${config.server_address}\`\`\`\n`;
+    if (config.footer != undefined && config.footer != "")
+        content += `${config.footer}\n`;
+    return content;
 }
 export default dc_bot;

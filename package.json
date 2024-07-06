@@ -7,7 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "prettier": "npx prettier . --write",
     "eslint": "npx eslint .",
-    "run" : "npx tsx ./index.ts"
+    "run": "npx tsx ./index.ts"
   },
   "author": "",
   "license": "ISC",
@@ -15,7 +15,8 @@
     "discord.js": "^14.15.3",
     "dotenv": "^16.4.5",
     "minecraft-player": "^1.0.1",
-    "nodeactyl": "^3.3.0"
+    "nodeactyl": "^3.3.0",
+    "ts-node": "^10.9.2"
   },
   "devDependencies": {
     "@eslint/js": "^9.6.0",

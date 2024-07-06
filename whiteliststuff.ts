@@ -1,125 +1,158 @@
 import minecraftPlayer from 'minecraft-player';
 import fs from 'fs';
+import { Message } from 'discord.js';
 const wl = {
-addToWL:  (username, uuid, dcid, message) => {
-  if (dcid == '') return;
-  if (message == undefined) return;
-  //load whitelist.json
-  const whitelist: Array<customWhitelistLine> = JSON.parse(fs.readFileSync(config.parsed.WHITELIST_PATH).toString());
-  if (whitelist == undefined) return;
-  //check if uuid / playername is already in whitelist
-  if (whitelist.some((wl_line: customWhitelistLine) => wl_line.uuid === uuid)) {
+  addToWL: (username, uuid, dcid, message) => {
+    if (dcid == '') return;
+    if (message == undefined) return;
+    //load whitelist.json
+    const whitelist: Array<customWhitelistLine> = JSON.parse(fs.readFileSync(config.parsed.WHITELIST_PATH).toString());
+    if (whitelist == undefined) return;
+    //check if uuid / playername is already in whitelist
+    if (whitelist.some((wl_line: customWhitelistLine) => wl_line.uuid === uuid)) {
 
-    message.react('❌');
-    const entry = whitelist.find((wl_line) => wl_line.uuid === uuid);
-    if (entry == undefined) return;
-
-    message.reply(
-      (entry.name || "") +
-      ' is already registered by <@' +
-      entry.dcid +
-      '>.',
-    );
-    return -1;
-  }
-  if (whitelist.some((wl_line) => wl_line.name === username)) {
-    message.react('❌');
-    const other_entry = whitelist.find((wl_line) => wl_line.name === username);
-    if (other_entry == undefined) return;
-    message.reply(
-      other_entry.name +
-      ' is already registered by <@' +
-      other_entry.dcid +
-      '>.',
-    );
-    return -1;
-  }
-  whitelist.push({ uuid, name: username, dcid });
-  fs.writeFileSync(config.parsed.WHITELIST_PATH, JSON.stringify(whitelist));
-  //reload whitelist on all servers
-  message.react('✅');
-  //TODO
-},
-remOfWL: function (username, uuid, dcid, message) {
-  //load whitelist.json
-  const whitelist : Array<customWhitelistLine> = JSON.parse(fs.readFileSync(config.parsed.WHITELIST_PATH).toString());
-  //check if player is already removed from whitelist
-  if (!whitelist.some((player) => player.name === username && player.dcid === dcid)) {
-    message.react('❌');
-    const other_other_thing = whitelist.find((player) => player.uuid === uuid);
-    if (other_other_thing == undefined) return;
-    message.reply(
-      other_other_thing.name +
-      ' is registered by <@' +
-      other_other_thing.dcid +
-      '> thats not you.',
-    );
-    return -1;
-  }
-  const newWhitelist = whitelist.filter((player) => player.name !== username && player.dcid !== dcid);
-  fs.writeFileSync(config.parsed.WHITELIST_PATH, JSON.stringify(newWhitelist));
-  //reload whitelist on all servers
-  message.react('✅');
-  //TODO
-},
-
-getplayersinwhitelist : function (discordid): Array<string> {
-  const registered_names: Array<string> = [];
-  const file = fs.readFileSync(config.parsed.WHITELIST_PATH);
-  const whitelist: Array<customWhitelistLine> = JSON.parse(file.toString());
-  // put all names in an array when the dcid is the same as the discordid
-  whitelist.forEach((player) => {
-    if (player.dcid === discordid) {
-      registered_names.push(player.name);
-    }
-  });
-  return registered_names;
-},
-
-on_wl_relevant_message : async function (message) {
-  if (message.content.startsWith('register')) {
-    const playernames = module.exports.wl.getplayersinwhitelist(message.author.id);
-    if (playernames.length > 2) {
-      message.reply('You are already registered as: ' + playernames.join(', '));
-      return;
-    }
-    if (message.content.split(' ')[1] === undefined) {
-      message.reply('Playername not found');
       message.react('❌');
-      return;
+      const entry = whitelist.find((wl_line) => wl_line.uuid === uuid);
+      if (entry == undefined) return;
+      message.reply(
+        (entry.name || "") +
+        ' is already registered by <@' +
+        entry.dcid +
+        '>.',
+      ).then((replyer) => {
+        setTimeout(() => { replyer.delete() }, 1000 * 60)
+      });
+      return -1;
     }
-    const { uuid } = await minecraftPlayer(message.content.split(' ')[1]);
-    console.log(uuid);
-    //check if failed
-    if (!uuid || uuid === '069a79f4-44e9-4726-a5be-fca90e38aaf5' /*notch uuid*/) {
-      message.reply('Playername not found');
+    if (whitelist.some((wl_line) => wl_line.name === username)) {
       message.react('❌');
+      const other_entry = whitelist.find((wl_line) => wl_line.name === username);
+      if (other_entry == undefined) return;
+      message.reply(
+        other_entry.name +
+        ' is already registered by <@' +
+        other_entry.dcid +
+        '>.',
+      ).then((replyer) => {
+        setTimeout(() => { replyer.delete() }, 1000 * 60)
+      });
+      return -1;
+    }
+    whitelist.push({ uuid, name: username, dcid });
+    fs.writeFileSync(config.parsed.WHITELIST_PATH, JSON.stringify(whitelist, null, 4));
+    //reload whitelist on all servers
+    message.react('✅');
+    //TODO
+  },
+  remOfWL: function (username, uuid, dcid, message) {
+    //load whitelist.json
+    const whitelist: Array<customWhitelistLine> = JSON.parse(fs.readFileSync(config.parsed.WHITELIST_PATH).toString());
+    //check if player is already removed from whitelist
+    if (!whitelist.some((player) => player.name === username && player.dcid === dcid)) {
+      message.react('❌');
+      const registered_by = whitelist.find((player) => player.uuid === uuid);
+      if (registered_by == undefined) return;
+      message.reply(
+        registered_by.name +
+        ' ist registriert von <@' +
+        registered_by.dcid +
+        '> , was nicht du bist.',
+      ).then((replyer) => {
+        setTimeout(() => { replyer.delete() }, 1000 * 60)
+      });
+
+      return -1;
+    }
+    const newWhitelist = whitelist.filter((player) => player.name !== username && player.dcid !== dcid);
+    fs.writeFileSync(config.parsed.WHITELIST_PATH, JSON.stringify(newWhitelist, null, 4));
+    //reload whitelist on all servers
+    message.react('✅');
+    //TODO
+  },
+
+  getplayersinwhitelist: function (discordid): Array<string> {
+    const registered_names: Array<string> = [];
+    const file = fs.readFileSync(config.parsed.WHITELIST_PATH);
+    const whitelist: Array<customWhitelistLine> = JSON.parse(file.toString());
+    // put all names in an array when the dcid is the same as the discordid
+    whitelist.forEach((player) => {
+      if (player.dcid === discordid) {
+        registered_names.push(player.name);
+      }
+    });
+    return registered_names;
+  },
+
+  on_wl_relevant_message: async function (message: Message) {
+    let replyer: Message;
+    if (message.content.startsWith('mylist')) {
+      setTimeout(() => { message.delete() }, 1000 * 60)
+      const playernames = wl.getplayersinwhitelist(message.author.id);
+      if (playernames.length > 0) {
+        replyer = await message.reply("Du has registriert: " + playernames.join(', '));
+        message.react('✅');
+      } else {
+        replyer = await message.reply("Noch nichts registriert");
+        message.react('✅');
+      }
+      setTimeout(() => { replyer.delete() }, 1000 * 60)
       return;
     }
-    const found = module.exports.wl.addToWL(message.content.split(' ')[1], uuid, message.author.id, message);
-    if (found !== undefined)
-      if (typeof found === 'string') {
-        
-        message.reply('You are already registered as ' + found);
-        message.react('❌');
-        return;
-      } else if (found === -3) {
-        message.reply('This Player is already registered');
-        message.react('❌');
+
+    if (message.content.startsWith('register')) {
+      setTimeout(() => { message.delete() }, 1000 * 60)
+      const playernames = wl.getplayersinwhitelist(message.author.id);
+      if (playernames.length > Number.parseInt(globalThis.config.parsed.PLAYER_CAP)) {
+        replyer = await message.reply('Du bist bereits als ' + playernames.join(', ')
+          + " Registriert, nutze unregister um das zu entfernen (es gibt eine Cap von "
+          + globalThis.config.parsed.PLAYER_CAP + " Spielern)");
+        setTimeout(() => { replyer.delete() }, 1000 * 60)
         return;
       }
-    //react with a checkmark
-  }
-  if (message.content.startsWith('unregister')) {
-    //check if username is a real player
-    const { uuid } = await minecraftPlayer(message.content.split(' ')[1]);
-    //check if failed
-    if (!uuid || uuid === '069a79f4-44e9-4726-a5be-fca90e38aaf5' /*notch uuid*/) {
-      message.reply('Player not found');
-      message.react('❌');
+      if (message.content.split(' ')[1] === undefined) {
+        replyer = await message.reply('Spielername nicht gefunden');
+        message.react('❌');
+        setTimeout(() => { replyer.delete() }, 1000 * 60)
+        return;
+      }
+      const { uuid } = await minecraftPlayer(message.content.split(' ')[1]);
+      console.log(uuid);
+      //check if failed
+      if (!uuid || uuid === '069a79f4-44e9-4726-a5be-fca90e38aaf5' /*notch uuid*/) {
+        replyer = await message.reply('Spielername nicht gefunden');
+        message.react('❌');
+        setTimeout(() => { replyer.delete() }, 1000 * 60)
+        return;
+      }
+      const found = wl.addToWL(message.content.split(' ')[1], uuid, message.author.id, message);
+      if (found !== undefined)
+        if (typeof found === 'string') {
+
+          replyer = await message.reply('Bereits registriert als ' + found + ' nutze unregister um das zu entfernen');
+          message.react('❌');
+          setTimeout(() => { replyer.delete() }, 1000 * 60)
+          return;
+        } else if (found === -3) {
+          replyer = await message.reply('Dieser Spieler ist bereits gewhitelistet');
+          message.react('❌');
+          setTimeout(() => { replyer.delete() }, 1000 * 60)
+          return;
+        }
+      //react with a checkmark
     }
-    module.exports.wl.remOfWL(message.content.split(' ')[1], uuid, message.author.id, message);
-  }
-},
+    if (message.content.startsWith('unregister')) {
+      setTimeout(() => { message.delete() }, 1000 * 60)
+      //check if username is a real player
+      const { uuid } = await minecraftPlayer(message.content.split(' ')[1]);
+      //check if failed
+      if (!uuid || uuid === '069a79f4-44e9-4726-a5be-fca90e38aaf5' /*notch uuid*/) {
+        replyer = await message.reply('Spieler nicht gefunden');
+        setTimeout(() => { replyer.delete() }, 1000 * 60)
+        message.react('❌');
+      }
+      wl.remOfWL(message.content.split(' ')[1], uuid, message.author.id, message);
+    }
+  },
 }
+
 export default wl;

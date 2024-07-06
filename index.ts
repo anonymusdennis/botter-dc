@@ -1,22 +1,3 @@
-//plan: remove player from the whitelist.
-//example whitelist.json file:
-/*
-[
-  {
-    "uuid": "9af99b2b-a3bb-4a7c-99a7-d119704fa4ef",
-    "name": "aaaaa"
-  }
-]*/
-//goal
-//the file /srv/mc_whitelist/whitelist.json is shared between all servers and only we have access to it.
-//add all registered players to the whitelist.json file.
-//after reload the whitelist on all servers using the pterodactyl api. with /whitelist reload
-//the same when removing players from the whitelist.
-// all this will integrate via discordjs ONLY ON ONE DC SERVER.
-//commands: register
-//plan: add player to the whitelist.
-//commands: unregister 015c5a30-a553-4163-9fc3-f47bb4e71f88
-
 import { Client, GatewayIntentBits, Partials } from 'discord.js';
 import dotenv from 'dotenv';
 import Nodeactyl from 'nodeactyl';
@@ -25,15 +6,17 @@ import dc_bot from './dc_channel_updater.js';
 declare global {
   // eslint-disable-next-line no-var
   var config: dotenv.DotenvConfigOutput;
+  // eslint-disable-next-line no-var
+  var client: Client<boolean>;
 }
 globalThis.config = dotenv.config()
 const server_uuid_blacklist: Array<string> = [];
 if (globalThis.config == undefined || typeof (globalThis.config) != "object" || globalThis.config.parsed == undefined) {
-  console.log("Malformed .env File, please fix")
+  //console.log("Malformed .env File, please fix")
   process.exit()
 }
-console.log(globalThis.config);
-const client = new Client({
+//console.log(globalThis.config);
+globalThis.client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
@@ -65,52 +48,54 @@ client.on('messageCreate', async (message) => {
 
 const commandlist = [
   'say §4[!!!WICHTIG!!!]',
-  'say Nach langen überlegen, und Vielen verlorenen Spielern haben wir(das Serverteam) uns nun entschieden:',
-  'say Um auf moddedmc.de / mmc.rip zu spielen, Müssen sich bald alle Spieler auf den gleichen DC server um sich zu registrieren',
-  'say Dies soll bewirken, dass Endlich unsere Community wieder Zusammenkommt.',
-  'say das ganze wird auf whitelist basis ablaufen, und Nach registrierung sind die Spieler global au allen gehosteten Servern AUTOMATISCH gewhitelistet.',
-  'say Die Server werden weiterhin bis in alle ewigkeit kostenlos bleiben, Dies ist nur eine Aktion zum Revitalisiern aller Modpack/events.',
-  'say Um später dann dich in der whitelist zu adden, einfach in den Untigen DC server joinen',
-  'tellraw @a {"text":"DC Server","clickEvent":{"action":"open_url","value":"https://discord.gg/mjA8PfAhea"},"hoverEvent":{"action":"show_text","value":[{"text":"Dem DC server beitreten","bold":true,"color":"dark_blue"}]}}',
-  'say und wo der link oben nicht gezeigt wird, hier nochmal: https://discord.gg/mjA8PfAhea',
-  'say Danke für euer Verständnis, diese Änderungen werden erst nach einem Monat aktiviert, sodass jeder Zeit bleibt sich zu registrieren.',
+  'say Bitte In Zukunft alle Spieler über den Offiziellen Discord Server Informieren. Danke, euer Team!',
 ];
 function spammessage_forall() {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  application.getAllServers().then(async (servers: any) => {
-    servers.data.forEach(async (server: pteroServer) => {
-      //console.log(JSON.stringify(server));
+  let timeout = 0;
+  application.getAllServers().then(async (servers: serverHolder) => {
+    for (const server of servers.data) {
+      if (server.attributes.status != null)
+        continue;
+      ////console.log(JSON.stringify(server));
       if (server_uuid_blacklist.includes(server.attributes.uuid)) {
-        return;
+        return true;
       }
-      if (server.attributes.uuid == '015c5a30-a553-4163-9fc3-f47bb4e71f88') {
-        const commanded: Array<pteroServer> = [];
-        let success = true;
-        let timeout = 0;
-        commandlist.forEach(async (command) => {
+      //if (server.attributes.uuid == '015c5a30-a553-4163-9fc3-f47bb4e71f88') {
+        if (server.attributes.uuid != undefined && server.attributes.uuid != "") {
+          //console.log(server.attributes.status)
+        
+        commandlist.forEach( (command) => {
           timeout += 1000;
           try {
-            setTimeout(pteroclient.sendServerCommand.bind(pteroclient, server.attributes.uuid, command), timeout);
+            setTimeout(async ()=> {
+              try {
+                //console.log("aaah" + timeout)
+                await pteroclient.sendServerCommand(server.attributes.uuid, command).catch(()=>{//
+                  });
+                //might fail because server offline
+              } catch (error) {
+                return;
+              }
+            }, timeout);
           } catch (e) {
-            success = false;
             //exit loop
-            return;
           }
         });
-        if (success) commanded.push(server);
 
       }
-    });
+    }
   });
 }
 //sendcommandtoallservers();
 client.login(token);
 async function minutely_update() {
+  //console.log("updating..")
   await application.getAllServers().then(async (servers: serverHolder) => {
     dc_bot.minutely_update(servers)
   })
+  //console.log("done updating..")
+  
   //all things that need to be updated every minute
 }
-spammessage_forall();
-setInterval(spammessage_forall, 1000 * 20); // 1 hour
+setInterval(spammessage_forall, 1000 * 60 * 60 * 2); // 2 hour
 setInterval(minutely_update, 1000 * 60); // 60 seconds
