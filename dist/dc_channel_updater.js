@@ -71,7 +71,7 @@ class serverinstance {
             if (i.uuid == uuid)
                 return i;
         }); // prevent duplicates
-        this.client = client;
+        this.client = globalThis.client;
         this.application = application;
         this.pteroclient = pteroclient;
         this.server = null;
@@ -114,7 +114,6 @@ class serverinstance {
             //check if first message of each channel contains uuid
             //also check wether written by bot.
             this.channel_created = true;
-            yield this.client.guilds.fetch();
             ////console.log("starting fetch")
             yield findChannel(this.client, this.uuid).then((channel) => __awaiter(this, void 0, void 0, function* () {
                 this.channel = channel;

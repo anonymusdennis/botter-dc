@@ -99,3 +99,4 @@ async function minutely_update() {
 }
 setInterval(spammessage_forall, 1000 * 60 * 60 * 2); // 2 hour
 setInterval(minutely_update, 1000 * 60); // 60 seconds
+minutely_update()

@@ -71,7 +71,7 @@ class serverinstance {//TODO: Move Configs/defaults
       if (i.uuid == uuid)
         return i;
     }) // prevent duplicates
-    this.client = client;
+    this.client = globalThis.client;
     this.application = application;
     this.pteroclient = pteroclient;
     this.server = null;
@@ -110,8 +110,6 @@ class serverinstance {//TODO: Move Configs/defaults
     //check if first message of each channel contains uuid
     //also check wether written by bot.
     this.channel_created = true;
-
-    await this.client.guilds.fetch();
     ////console.log("starting fetch")
     await findChannel(this.client, this.uuid).then(async (channel) => {
       this.channel = channel;
