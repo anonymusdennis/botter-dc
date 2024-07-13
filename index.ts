@@ -8,6 +8,10 @@ declare global {
   var config: dotenv.DotenvConfigOutput;
   // eslint-disable-next-line no-var
   var client: Client<boolean>;
+  // eslint-disable-next-line no-var
+  var application : object;
+  // eslint-disable-next-line no-var
+  var pteroclient : object;
 }
 globalThis.config = dotenv.config()
 const server_uuid_blacklist: Array<string> = [];
@@ -31,12 +35,12 @@ globalThis.client = new Client({
 
 const token = globalThis.config.parsed.TOKEN;
 
-const application = new Nodeactyl.NodeactylApplication('https://moddedmc.de', globalThis.config.parsed.TOKEN_PTERO_APPL);
-const pteroclient = new Nodeactyl.NodeactylClient('https://moddedmc.de', globalThis.config.parsed.TOKEN_PTERO_CLIENT);
+globalThis.application = new Nodeactyl.NodeactylApplication('https://moddedmc.de', globalThis.config.parsed.TOKEN_PTERO_APPL);
+globalThis.pteroclient = new Nodeactyl.NodeactylClient('https://moddedmc.de', globalThis.config.parsed.TOKEN_PTERO_CLIENT);
 
 client.once('ready', () => {
   console.log('Ready!');
-  dc_bot.init(client, application, pteroclient);
+  dc_bot.init(client, globalThis.application, globalThis.pteroclient);
 });
 // Application
 
@@ -52,7 +56,7 @@ const commandlist = [
 ];
 function spammessage_forall() {
   let timeout = 0;
-  application.getAllServers().then(async (servers: serverHolder) => {
+  globalThis.application.getAllServers().then(async (servers: serverHolder) => {
     for (const server of servers.data) {
       if (server.attributes.status != null)
         continue;
@@ -70,7 +74,7 @@ function spammessage_forall() {
             setTimeout(async ()=> {
               try {
                 //console.log("aaah" + timeout)
-                await pteroclient.sendServerCommand(server.attributes.uuid, command).catch(()=>{//
+                await globalThis.pteroclient.sendServerCommand(server.attributes.uuid, command).catch(()=>{//
                   });
                 //might fail because server offline
               } catch (error) {
@@ -86,11 +90,57 @@ function spammessage_forall() {
     }
   });
 }
+function enable_whitelist_forall(){
+  let timeout = 0;
+  globalThis.application.getAllServers().then(async (servers: serverHolder) => {
+    for (const server of servers.data) {
+      if (server.attributes.status != null)
+        continue;
+      ////console.log(JSON.stringify(server));
+      if (server_uuid_blacklist.includes(server.attributes.uuid)) {
+        return true;
+      }
+      //if (server.attributes.uuid == '015c5a30-a553-4163-9fc3-f47bb4e71f88') {
+        if (server.attributes.uuid != undefined && server.attributes.uuid != "") {
+          //console.log(server.attributes.status)
+        
+
+          timeout += 1000;
+          try {
+            setTimeout(async ()=> {
+              try {
+                //console.log("aaah" + timeout)
+                await globalThis.pteroclient.sendServerCommand(server.attributes.uuid, "whitelist on").catch(()=>{//
+                  });
+                //might fail because server offline
+              } catch (error) {
+                return;
+              }
+            }, timeout);
+            timeout += 1000;
+            setTimeout(async ()=> {
+              try {
+                //console.log("aaah" + timeout)
+                await globalThis.pteroclient.sendServerCommand(server.attributes.uuid, "whitelist reload").catch(()=>{//
+                  });
+                //might fail because server offline
+              } catch (error) {
+                return;
+              }
+            }, timeout);
+          } catch (e) {
+            //exit loop
+          }
+
+      }
+    }
+  });
+}
 //sendcommandtoallservers();
 client.login(token);
 async function minutely_update() {
   //console.log("updating..")
-  await application.getAllServers().then(async (servers: serverHolder) => {
+  await globalThis.application.getAllServers().then(async (servers: serverHolder) => {
     dc_bot.minutely_update(servers)
   })
   //console.log("done updating..")
@@ -98,5 +148,6 @@ async function minutely_update() {
   //all things that need to be updated every minute
 }
 setInterval(spammessage_forall, 1000 * 60 * 60 * 2); // 2 hour
-setInterval(minutely_update, 1000 * 60); // 60 seconds
-minutely_update()
+setInterval(minutely_update, 1000 * 60 * 5); // 5 min
+setInterval(enable_whitelist_forall, 1000 * 60 * 10); // 60 seconds
+enable_whitelist_forall()

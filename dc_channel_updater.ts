@@ -12,46 +12,71 @@ if (globalThis.config == undefined || globalThis.config.parsed == undefined) {
     process.exit()
   }
 }
+let currently_running = false;
 const serverpath = globalThis.config.parsed.SERVER_FILES_DIR;
 import fs from 'fs';
-import { ChannelType, Client, Guild, PermissionFlagsBits, TextChannel } from 'discord.js';
+import { ChannelType, Client, Guild, TextChannel } from 'discord.js';
 const DEFAULT_CONFIG = './default_config.json'
 const DEFAULT_CONFIG_FILE = fs.readFileSync(DEFAULT_CONFIG)
 let client;
-let application;
 let pteroclient;
 let instances: Array<serverinstance> = [];
 const dc_bot = {
   minutely_update: function (servers: serverHolder) {
+    let time = 0;
+    console.log("running update")
+    if (!currently_running) {
+      currently_running = true;
+      setTimeout(() => { currently_running = false }, 10 * 1000)
+    }
+    else {
+      return;
+    }
     servers.data.forEach(async (server) => {
       //////console.log(JSON.stringify(server));
       //check if already exists
       let found = false;
       instances.forEach((instance: serverinstance) => {
         if (instance.uuid == server.attributes.uuid) {
+          time += 5000;
           found = true;
-          instance.update_channel()
+          setTimeout(() => { instance.update_channel() },time)
         }
       });
       if (!found) {
-        instances.push(new serverinstance(client, application, pteroclient, server.attributes.uuid));
+        time += 5000;
+        console.log("found new server")
+        setTimeout(() => { instances.push(new serverinstance(client, globalThis.application, globalThis.pteroclient, server.attributes.uuid)); },time)
+        
       }
     });
+
   },
   init: async function (client, application, pteroclient) {
+    let time = 0;
     //loop over all servers
-    //console.log("init")
+    console.log("init")
     application.getAllServers().then(async (servers) => {
-      //console.log("servers")
+
+      console.log("servers")
       //for each server create a new instance
       servers.data.forEach(async (server, index) => {
         //////console.log(JSON.stringify(server));
-        //console.log(index)
-        instances.push(new serverinstance(client, application, pteroclient, server.attributes.uuid));
+        let skip = false;
+        instances.forEach((i) => {
+          if (i.uuid == server.attributes.uuid)
+            skip = true;
+        })
+        if(!skip)
+        {
+        console.log("initing")
+        time += 5000;
+        setTimeout(() => {instances.push(new serverinstance(client, application, globalThis.pteroclient, server.attributes.uuid))},time);
+        }
         //console.log(index)
       });
     })
-    //console.log("init done");
+    console.log("init done");
   }
 }
 
@@ -75,17 +100,17 @@ class serverinstance {//TODO: Move Configs/defaults
     this.application = application;
     this.pteroclient = pteroclient;
     this.server = null;
-    this.channel = null;
+    this.channel = undefined;
     this.channel_created = false;
     this.uuid = uuid;
     this.update_channel()
     this.json_config = get_config_of_server(uuid);
     return this;
   }
-  async update_channel() {
-    await this.check_create_channel();
+  update_channel() {
+    this.check_create_channel();
     if (this.channel != undefined)
-      await this.create_text();
+      this.create_text();
     //get the server
     //get the channel
     //update the channel
@@ -109,11 +134,28 @@ class serverinstance {//TODO: Move Configs/defaults
     //if not create it
     //check if first message of each channel contains uuid
     //also check wether written by bot.
-    this.channel_created = true;
     ////console.log("starting fetch")
-    await findChannel(this.client, this.uuid).then(async (channel) => {
-      this.channel = channel;
-      const config = get_config_of_server(this.uuid);
+
+    let was_sucess = false;
+    const config = get_config_of_server(this.uuid);
+    findChannel(this.client, this.uuid,  (channel) => {
+      was_sucess = true;
+      if (channel != undefined)
+        this.channel = channel;
+
+      
+      if (config == undefined || config.create_channel == undefined || config.create_channel == false) {
+        if (this.channel != undefined) {
+          this.channel.delete()
+        }
+        if (channel != undefined)
+          channel.delete()
+        this.channel = undefined;
+        return;
+      }
+    }, async () => {
+      if (was_sucess)
+        return;
       if (config == undefined || config.create_channel == undefined || config.create_channel == false) {
         if (this.channel != undefined)
           this.channel.delete()
@@ -121,32 +163,33 @@ class serverinstance {//TODO: Move Configs/defaults
         return;
       }
       if (this.channel == undefined) {
-
         //create channel
         const server = await getServer(this.uuid, this.application);
         let channel_name = 'deleteme';
         if (server != null) {
           channel_name = server.attributes.name;
         }
-        ////console.log('creating channel for ' + this.uuid);
+        console.log('creating channel for ' + this.uuid);
         this.channel = await create_channel(channel_name, this.client, this.uuid)
+        this.create_text()
       }
     })
 
   }
   async create_text() {
-    await findChannel(this.client, this.uuid).then(async (channel: TextChannel) => {
-      if (channel == undefined)
+      if (this.channel == undefined)
         return;
       const cfg: serverconfig = get_config_of_server(this.uuid);
       if (cfg == undefined)
         return;
 
-      const messages = await channel.messages.fetch()
-      //console.log("fixing channel")
-      if (cfg.channel_name != undefined && cfg.channel_name != "" && channel.name != cfg.channel_name)
-        channel.setName(cfg.channel_name, "Config change");
-      messages.forEach((message) => {
+      await this.channel.messages.fetch()
+      const messages = await this.channel.messages.cache.entries();
+
+      console.log("fixing channel")
+      if (cfg.channel_name != undefined && cfg.channel_name != "" && this.channel.name != cfg.channel_name)
+        this.channel.setName(cfg.channel_name, "Config change");
+      for (const [messageId, message] of messages) {
         //const count : number = messages.size;
         if (message.author.id == globalThis.client.user.id) {
           if (message.content.indexOf(this.uuid) != -1) {
@@ -155,19 +198,16 @@ class serverinstance {//TODO: Move Configs/defaults
             message.edit(new_content)
           }
         }
-
-      })
-      ////console.log(cfg);
-    })
+      }
   }
 }
 async function getServer(uuid, application) {
   try {
-    const servers = await application.getAllServers();
+    const servers = await globalThis.application.getAllServers();
     if (!servers || !servers.data) {
       throw new Error('Invalid response structure');
     }
-    ////console.log('got servers');
+    console.log('got servers');
     const my_server = servers.data.find((server) => server.attributes.uuid === uuid);
     return my_server;
   } catch (error) {
@@ -179,61 +219,63 @@ async function getServer(uuid, application) {
 function get_config_of_server(uuid) {
   //check if in Path of uuid a discord_bot.json file exists
   //if not create one
-
-  const path = serverpath + uuid + '\\';
+  const path = serverpath + uuid + '/';
   const file_path = path + 'discord_bot.json';
   let local_cfg: serverconfig;
   if (fs.existsSync(path)) {
     if (!fs.existsSync(file_path)) {
-      //console.log("creating empty config")
+      console.log("creating empty config")
       fs.writeFileSync(file_path, DEFAULT_CONFIG_FILE);
     }
     //check if config is valid
     try {
       local_cfg = JSON.parse(fs.readFileSync(file_path).toString());
     } catch (e) {
-      //console.log('error creating config for ' + uuid);
+      console.log('error creating config for ' + uuid);
       local_cfg = undefined;
     }
   }
+  else {
+    console.log(path)
+  }
   return local_cfg;
 }
-const findChannel = async (client: Client, uuid: string): Promise<TextChannel> => {
-  let return_this_channel: TextChannel;
-  await new Promise((resolve) => {
-    client.guilds.cache.each(async (guild: Guild) => {
-      if (guild.id == globalThis.config.parsed.GUILD_ID) {
-        await guild.channels.cache.each(async (channel) => {
-          // only type 0 (text based)
-          if (channel.type === 0 && channel.parent != undefined && 
-            channel.parent != null && channel.parent.id == config.parsed.PARENT_CHANNEL) {
-            await channel.messages.fetch({ limit: 20 }).then(async (messages) => {
 
-              //* Last 20 msgs
-              let is_this_the_one = false;
-              await messages.every(async (message) => {
-                ////console.log(message.content.indexOf(uuid) != -1);
-                if (message.content.indexOf(uuid) != -1) {
-                  is_this_the_one = true;
-                  return false; //stop looping
-                }
-                return true; //continue looping
-              });
-              if (is_this_the_one) {
-                return_this_channel = channel;
-                resolve(return_this_channel)
-              }
-            });
+const findChannel = async (client: Client, uuid: string, callback_success, callback_fail) => {
+  console.log("fetching")
+  await client.guilds.fetch();
+  const guilds = client.guilds.cache;
+
+  for (const [guildId, guild] of guilds) {
+
+    if (guild.id == globalThis.config.parsed.GUILD_ID) {
+      await guild.channels.fetch();
+      const channels = guild.channels.cache;
+
+      for (const [channelId, channel] of channels) {
+        
+        // only type 0 (text based)
+        if (channel.type == 0 && channel.parentId == globalThis.config.parsed.PARENT_CHANNEL) {
+ 
+          await channel.messages.fetch();
+          const messages = await channel.messages.cache;
+
+          for (const [messageId, message] of messages) {
+            if (message.content.includes(uuid)) {
+              console.log("found " + channel.name);
+              setTimeout(((channel,callback)=>{callback(channel)}).bind(null,channel,callback_success), 10);
+              return; //stop looping
+            }
           }
-        });
+        }
       }
-    });
-    setTimeout(() => {
-      resolve(return_this_channel)
-    }, 1000)
-  })
-  return return_this_channel;
-}
+    }
+  }
+    console.log("could not find " + uuid)
+    setTimeout(((callback)=>{callback()}).bind(null,callback_fail), 10);
+    callback_fail();
+};
+
 const create_channel = async (channel_name: string, client: Client, uuid: string): Promise<TextChannel> => {
   let returner: TextChannel;
   const config: serverconfig = get_config_of_server(uuid);
@@ -244,22 +286,22 @@ const create_channel = async (channel_name: string, client: Client, uuid: string
     .create({
       name: channel_name,
       type: ChannelType.GuildText,
-      permissionOverwrites: [
-        {
-          id: guild.roles.everyone,
-          allow: [
-            PermissionFlagsBits.AddReactions,
-            PermissionFlagsBits.ViewChannel,
-            PermissionFlagsBits.ReadMessageHistory,
-          ], //history and emojis
-          deny: [
-            PermissionFlagsBits.SendMessages,
-            PermissionFlagsBits.EmbedLinks,
-            PermissionFlagsBits.AttachFiles,
-            PermissionFlagsBits.UseExternalEmojis,
-          ],
-        },
-      ],
+      /*      permissionOverwrites: [
+              {
+                id: guild.roles.everyone,
+                allow: [
+                  PermissionFlagsBits.AddReactions,
+                  PermissionFlagsBits.ViewChannel,
+                  PermissionFlagsBits.ReadMessageHistory,
+                ], //history and emojis
+                deny: [
+                  PermissionFlagsBits.SendMessages,
+                  PermissionFlagsBits.EmbedLinks,
+                  PermissionFlagsBits.AttachFiles,
+                  PermissionFlagsBits.UseExternalEmojis,
+                ],
+              },
+            ],*/
     })
     .then(async (channel) => {
       returner = channel;
